@@ -1,5 +1,10 @@
 [package]
 name = "everinst"
+description = "An installer for the Everest mod loader"
+homepage = "https://github.com/leo60228/everinst"
+repository = "https://github.com/leo60228/everinst"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 authors = ["leo60228 <iakornfeld@gmail.com>"]
 edition = "2018"
@@ -13,3 +18,6 @@ reqwest = "0.9"
 nfd = "0.0.4"
 dirs = "1.0"
 zip = "0.5.1"
+
+[package.metadata.deb]
+depends = "$auto, mono-devel (>= 5.0)"

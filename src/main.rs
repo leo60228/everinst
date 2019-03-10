@@ -4,7 +4,9 @@ use iui::controls::{
 use iui::prelude::*;
 use nfd::Response;
 use std::collections::HashMap;
+use std::panic;
 use std::path::{Path, PathBuf};
+use std::process;
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
@@ -48,6 +50,14 @@ fn mono_error() {
 }
 
 fn main() {
+    // immediately exit on panic
+    // TODO: display graphical message before exiting (via event loop)
+    let orig_handler = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        orig_handler(panic_info);
+        process::exit(1);
+    }));
+
     let mut mono: Option<PathBuf> = None;
 
     if !cfg!(windows) {
@@ -135,7 +145,7 @@ fn display(mono: Option<PathBuf>) {
         if let Ok(Response::Okay(file)) = nfd::open_file_dialog(Some("exe"), None) {
             file_entry.set_value(&ui, &file);
 
-            if Path::new(&file).exists() {
+            if Path::new(&file).is_file() {
                 next_button.enable(&ui);
             } else {
                 next_button.disable(&ui);
@@ -157,7 +167,7 @@ fn display(mono: Option<PathBuf>) {
             file_entry.enable(&ui);
             file_button.enable(&ui);
 
-            if Path::new(&file_entry.value(&ui)).exists() {
+            if Path::new(&file_entry.value(&ui)).is_file() {
                 next_button.enable(&ui);
             } else {
                 next_button.disable(&ui);
@@ -166,7 +176,7 @@ fn display(mono: Option<PathBuf>) {
     });
 
     file_entry.on_changed(&ui, |path| {
-        if Path::new(&path).exists() {
+        if Path::new(&path).is_file() {
             next_button.enable(&ui);
         } else {
             next_button.disable(&ui);

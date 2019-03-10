@@ -1,0 +1,4 @@
+[submodule "libui-rs"]
+	path = libui-rs
+	url = git://github.com/leo60228/libui-rs.git
+	branch = master
