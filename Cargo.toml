@@ -1,0 +1,15 @@
+[package]
+name = "everinst"
+version = "0.1.0"
+authors = ["leo60228 <iakornfeld@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+iui = { git = "https://github.com/rust-native-ui/libui-rs.git" }
+which = "2.0.1"
+open = "1.2.2"
+serde_json = "1.0"
+reqwest = "0.9"
+nfd = "0.0.4"
+dirs = "1.0"
+zip = "0.5.1"
