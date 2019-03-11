@@ -1,4 +1,19 @@
-FROM buildpack-deps:sid
+FROM ubuntu:xenial
+
+ENV MONO_VERSION 5.18.0.225
+
+RUN apt-get update \
+  && apt-get install -y apt-transport-https ca-certificates \
+  && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
+  && apt-key list | grep Xamarin \
+  && echo "deb https://download.mono-project.com/repo/ubuntu stable-xenial main" > /etc/apt/sources.list.d/mono-official-stable.list \
+  && apt-get update \
+  && apt-get install -y mono-runtime
+
+RUN apt-get install -y llvm-dev libclang-dev clang
+RUN apt-get install -y libgtk-3-dev
+RUN apt-get install -y cmake
+RUN apt-get install -y wget
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
@@ -25,12 +40,8 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
-RUN apt-get update
-RUN apt-get install -y llvm-dev libclang-dev clang
-RUN apt-get install -y mono-devel
-RUN apt-get install -y libgtk-3-dev
 RUN cargo install cargo-deb
-RUN apt-get install -y cmake
+RUN apt-get install -y git
 
 WORKDIR /tmp/everinst/
 ENTRYPOINT ["/bin/bash"]
