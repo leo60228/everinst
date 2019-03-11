@@ -78,13 +78,13 @@ fn main() {
 fn find_steam() -> Option<PathBuf> {
     let path = if cfg!(windows) {
         Some(PathBuf::from(
-            "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Celeste\\",
+            "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Celeste\\Celeste.exe",
         ))
     } else {
         let mut data = dirs::data_local_dir();
 
         if let Some(local) = &mut data {
-            local.push("Steam/steamapps/common/Celeste/");
+            local.push("Steam/steamapps/common/Celeste/Celeste.exe");
         }
 
         data
@@ -120,28 +120,31 @@ fn display(mono: Option<PathBuf>) {
 
     let mut next_button = Button::new(&ui, "Next");
 
-    let radio = RadioButtons::new(&ui);
+    let mut radio = RadioButtons::new(&ui);
+    let mut file_entry = Entry::new(&ui);
+    let mut file_button = Button::new(&ui, "...");
 
     if steam.is_some() {
         radio.append(&ui, "Steam");
     }
 
-    if steam.is_none() || radio.selected(&ui) != 0 {
-        next_button.disable(&ui);
-    }
-
     radio.append(&ui, "Local path:");
+
+    if steam.is_some() && radio.selected(&ui) == 0 {
+        file_entry.set_value(&ui, steam.as_ref().unwrap().to_str().unwrap());
+    }
 
     let mut file_chooser = HorizontalBox::new(&ui);
 
     file_chooser.set_padded(&ui, true);
 
-    let mut file_entry = Entry::new(&ui);
-    let mut file_button = Button::new(&ui, "...");
-
     file_button.on_clicked(&ui, |_| {
         if let Ok(Response::Okay(file)) = nfd::open_file_dialog(Some("exe"), None) {
             file_entry.set_value(&ui, &file);
+
+            if steam.is_some() {
+                radio.set_selected(&ui, 1);
+            }
 
             if Path::new(&file).is_file() {
                 next_button.enable(&ui);
@@ -151,29 +154,26 @@ fn display(mono: Option<PathBuf>) {
         }
     });
 
-    if steam.is_some() && radio.selected(&ui) != 1 {
-        file_entry.disable(&ui);
-        file_button.disable(&ui);
-    }
-
     radio.on_selected(&ui, |btn| {
         if steam.is_some() && btn != 1 {
-            file_entry.disable(&ui);
-            file_button.disable(&ui);
+            file_entry.set_value(&ui, steam.as_ref().unwrap().to_str().unwrap());
+            next_button.enable(&ui);
+        } else if steam.is_some() {
+            file_entry.set_value(&ui, "");
+        }
+
+        if Path::new(&file_entry.value(&ui)).is_file() {
             next_button.enable(&ui);
         } else {
-            file_entry.enable(&ui);
-            file_button.enable(&ui);
-
-            if Path::new(&file_entry.value(&ui)).is_file() {
-                next_button.enable(&ui);
-            } else {
-                next_button.disable(&ui);
-            }
+            next_button.disable(&ui);
         }
     });
 
     file_entry.on_changed(&ui, |path| {
+        if steam.is_some() {
+            radio.set_selected(&ui, 1);
+        }
+
         if Path::new(&path).is_file() {
             next_button.enable(&ui);
         } else {
@@ -201,14 +201,10 @@ fn display(mono: Option<PathBuf>) {
         version = Some(version_map[&selected].clone());
         win.set_child(&ui, install.clone());
 
-        let path = if steam.is_some() && radio.selected(&ui) == 0 {
-            steam.clone().unwrap()
-        } else {
-            Path::new(&file_entry.value(&ui))
-                .parent()
-                .unwrap()
-                .to_path_buf()
-        };
+        let path = Path::new(&file_entry.value(&ui))
+            .parent()
+            .unwrap()
+            .to_path_buf();
 
         ready_tx
             .send((version.clone().unwrap(), path, mono.clone()))
