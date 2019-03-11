@@ -1,5 +1,5 @@
 use iui::controls::{
-    Button, Combobox, Entry, HorizontalBox, Label, RadioButtons, Spacer, TextEntry, VerticalBox,
+    Button, Combobox, Entry, HorizontalBox, Label, RadioButtons, Spacer, TextEntry, VerticalBox, HorizontalSeparator,
 };
 use iui::prelude::*;
 use nfd::Response;
@@ -104,7 +104,7 @@ fn display(mono: Option<PathBuf>) {
     let steam = find_steam();
 
     let ui = UI::init().expect("Couldn't create UI!");
-    let mut win = Window::new(&ui, "Everest", 200, 200, WindowType::NoMenubar);
+    let mut win = Window::new(&ui, "Everest", 200, 300, WindowType::NoMenubar);
 
     let mut version: Option<updater::EverestVersion> = None;
 
@@ -112,12 +112,13 @@ fn display(mono: Option<PathBuf>) {
     let (ready_tx, ready_rx) = mpsc::channel();
 
     // PAGES
-    let mut celeste = VerticalBox::new(&ui);
-    let mut everest = VerticalBox::new(&ui);
+    let mut select = VerticalBox::new(&ui);
     let mut install = VerticalBox::new(&ui);
     let mut finish = VerticalBox::new(&ui);
 
     // CELESTE PAGE
+
+    let mut next_button = Button::new(&ui, "Next");
 
     let radio = RadioButtons::new(&ui);
 
@@ -125,21 +126,15 @@ fn display(mono: Option<PathBuf>) {
         radio.append(&ui, "Steam");
     }
 
+    if steam.is_none() || radio.selected(&ui) != 0 {
+        next_button.disable(&ui);
+    }
+
     radio.append(&ui, "Local path:");
 
     let mut file_chooser = HorizontalBox::new(&ui);
 
     file_chooser.set_padded(&ui, true);
-
-    let mut next_button = Button::new(&ui, "Next");
-
-    if steam.is_none() || radio.selected(&ui) != 0 {
-        next_button.disable(&ui);
-    }
-
-    next_button.on_clicked(&ui, |_| {
-        win.set_child(&ui, everest.clone());
-    });
 
     let mut file_entry = Entry::new(&ui);
     let mut file_button = Button::new(&ui, "...");
@@ -189,19 +184,6 @@ fn display(mono: Option<PathBuf>) {
     file_chooser.append(&ui, file_entry.clone(), LayoutStrategy::Stretchy);
     file_chooser.append(&ui, file_button.clone(), LayoutStrategy::Compact);
 
-    celeste.append(
-        &ui,
-        Label::new(&ui, "Select Celeste location:"),
-        LayoutStrategy::Compact,
-    );
-    celeste.append(&ui, radio.clone(), LayoutStrategy::Compact);
-    celeste.append(&ui, file_chooser, LayoutStrategy::Compact);
-    celeste.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
-    celeste.append(&ui, next_button, LayoutStrategy::Compact);
-
-    celeste.set_padded(&ui, true);
-
-    // EVEREST PAGE
     let mut selector = Combobox::new(&ui);
     let versions = updater::get_versions();
     let mut version_map: HashMap<usize, updater::EverestVersion> = HashMap::new();
@@ -212,8 +194,6 @@ fn display(mono: Option<PathBuf>) {
     }
 
     selector.set_selected(&ui, 0);
-
-    let mut next_button = Button::new(&ui, "Next");
 
     next_button.on_clicked(&ui, |_| {
         let selected = selector.selected(&ui) as usize;
@@ -235,16 +215,24 @@ fn display(mono: Option<PathBuf>) {
             .unwrap();
     });
 
-    everest.append(
+    select.append(
+        &ui,
+        Label::new(&ui, "Select Celeste location:"),
+        LayoutStrategy::Compact,
+    );
+    select.append(&ui, radio.clone(), LayoutStrategy::Compact);
+    select.append(&ui, file_chooser, LayoutStrategy::Compact);
+    select.append(&ui, HorizontalSeparator::new(&ui), LayoutStrategy::Compact);
+    select.append(
         &ui,
         Label::new(&ui, "Select Everest version:"),
         LayoutStrategy::Compact,
     );
-    everest.append(&ui, selector, LayoutStrategy::Compact);
-    everest.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
-    everest.append(&ui, next_button, LayoutStrategy::Compact);
+    select.append(&ui, selector.clone(), LayoutStrategy::Compact);
+    select.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+    select.append(&ui, next_button, LayoutStrategy::Compact);
 
-    everest.set_padded(&ui, true);
+    select.set_padded(&ui, true);
 
     // INSTALL PAGE (background thread)
     thread::spawn(move || {
@@ -330,14 +318,14 @@ fn display(mono: Option<PathBuf>) {
     label_holder.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
 
     finish.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
-    finish.append(&ui, label_holder, LayoutStrategy::Stretchy);
+    finish.append(&ui, label_holder, LayoutStrategy::Compact);
     finish.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
     finish.append(&ui, exit, LayoutStrategy::Compact);
 
     finish.set_padded(&ui, true);
 
     // DISPLAY WINDOW
-    win.set_child(&ui, celeste);
+    win.set_child(&ui, select);
     win.show(&ui);
 
     let mut eloop = ui.event_loop();
