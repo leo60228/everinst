@@ -20,8 +20,9 @@ dirs = "1.0"
 zip = "0.5.1"
 
 [package.metadata.deb]
-depends = "$auto, mono-devel (>= 5.0)"
+depends = "libssl1.1, libgtk-3-0, libglib2.0-0, libcairo2, libpango-1.0-0, libc6, libgcc1, mono-runtime (>= 5.0)"
 assets = [
   ["assets/everinst.desktop", "usr/share/applications/", "644"],
-  ["assets/everest.png", "usr/share/pixmaps/", "644"]
+  ["assets/everest.png", "usr/share/pixmaps/", "644"],
+  ["target/release/everinst", "usr/bin/", "755"]
 ]
