@@ -18,9 +18,11 @@ reqwest = "0.9"
 nfd = "0.0.4"
 dirs = "1.0"
 zip = "0.5.1"
+openssl = { version = "0.10", features = ["vendored"] }
+openssl-probe = "0.1.2"
 
 [package.metadata.deb]
-depends = "libssl1.1, libgtk-3-0, libglib2.0-0, libcairo2, libpango-1.0-0, libc6, libgcc1, mono-runtime (>= 5.0)"
+depends = "libgtk-3-0, libglib2.0-0, libcairo2, libpango-1.0-0, libc6, libgcc1, mono-runtime (>= 5.0)"
 assets = [
   ["assets/everinst.desktop", "usr/share/applications/", "644"],
   ["assets/everest.png", "usr/share/pixmaps/", "644"],

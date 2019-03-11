@@ -58,6 +58,9 @@ fn main() {
         process::exit(1);
     }));
 
+    // use system ssl certs
+    openssl_probe::init_ssl_cert_env_vars();
+
     let mut mono: Option<PathBuf> = None;
 
     if !cfg!(windows) {
