@@ -25,6 +25,6 @@ openssl-probe = "0.1.2"
 depends = "libgtk-3-0, libglib2.0-0, libcairo2, libpango-1.0-0, libc6, libgcc1, mono-runtime (>= 5.0)"
 assets = [
   ["assets/everinst.desktop", "usr/share/applications/", "644"],
-  ["assets/everest.png", "usr/share/pixmaps/", "644"],
+  ["assets/everinst.png", "usr/share/pixmaps/", "644"],
   ["target/release/everinst", "usr/bin/", "755"]
 ]

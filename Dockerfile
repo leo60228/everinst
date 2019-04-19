@@ -42,6 +42,8 @@ RUN set -eux; \
 
 RUN cargo install cargo-deb
 RUN apt-get install -y git
+RUN apt-get install -y desktop-file-utils
+RUN apt-get install -y fuse
 
 WORKDIR /tmp/everinst/
 ENTRYPOINT ["/bin/bash"]

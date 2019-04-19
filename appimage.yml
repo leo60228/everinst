@@ -1,0 +1,9 @@
+app: EverInst
+
+ingredients:
+  dist: xenial
+  sources:
+    - deb http://us.archive.ubuntu.com/ubuntu/ xenial main universe
+    - deb https://download.mono-project.com/repo/ubuntu stable-xenial main
+  debs:
+    - /tmp/everinst/target/debian/*.deb

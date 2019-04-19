@@ -5,4 +5,5 @@ Type=Application
 Terminal=false
 Exec=everinst
 Name=EverInst
-Icon=everest
+Icon=everinst
+Categories=Utility;Game
