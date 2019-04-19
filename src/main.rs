@@ -3,6 +3,7 @@ use iui::controls::{
 };
 use iui::prelude::*;
 use nfd::Response;
+use std::fs::OpenOptions;
 use std::collections::HashMap;
 use std::panic;
 use std::path::{Path, PathBuf};
@@ -17,7 +18,7 @@ mod updater;
 fn mono_error() {
     let ui = UI::init().expect("Couldn't create UI!");
 
-    let mut win = Window::new(&ui, "Everest", 200, 200, WindowType::NoMenubar);
+    let mut win = Window::new(&ui, "EverInst", 200, 200, WindowType::NoMenubar);
 
     let mut container = VerticalBox::new(&ui);
     let spacer = Spacer::new(&ui);
@@ -35,7 +36,7 @@ fn mono_error() {
         }
     });
 
-    let label = Label::new(&ui, "You must have Mono installed to install Everest.\nGet it from https://www.mono-project.com/download/stable/.");
+    let label = Label::new(&ui, "You must have Mono installed to use EverInst.\nGet it from https://www.mono-project.com/download/stable/.");
 
     container.append(&ui, label, LayoutStrategy::Compact);
     container.append(&ui, spacer, LayoutStrategy::Stretchy);
@@ -49,6 +50,200 @@ fn mono_error() {
     ui.main();
 }
 
+fn register_uri_handler() {
+    let exe = std::env::current_exe().unwrap().to_str().unwrap().to_string();
+    let app = system_uri::App::new(
+        "space.leo60228.everinst".to_string(),
+        "leo60228".to_string(),
+        "EverInst".to_string(),
+        exe,
+        None
+    );
+    if let Err(err) = system_uri::install(&app, &["everest".to_string()]) {
+        println!("WARNING: Failed to add URI handler! Error: {}", err);
+    }
+}
+
+fn handle_everest_uri() {
+    // STATE
+    let steam = find_steam();
+
+    let ui = UI::init().expect("Couldn't create UI!");
+    let mut win = Window::new(&ui, "EverInst", 200, 300, WindowType::NoMenubar);
+
+    let (tx, rx) = mpsc::channel();
+    let (ready_tx, ready_rx) = mpsc::channel();
+
+    // PAGES
+    let mut select = VerticalBox::new(&ui);
+    let mut install = VerticalBox::new(&ui);
+    let mut finish = VerticalBox::new(&ui);
+
+    // CELESTE PAGE
+
+    let mut next_button = Button::new(&ui, "Next");
+
+    let mut radio = RadioButtons::new(&ui);
+    let mut file_entry = Entry::new(&ui);
+    let mut file_button = Button::new(&ui, "...");
+
+    if steam.is_some() {
+        radio.append(&ui, "Steam");
+    }
+
+    radio.append(&ui, "Local path:");
+
+    if steam.is_some() && radio.selected(&ui) == 0 {
+        file_entry.set_value(&ui, steam.as_ref().unwrap().to_str().unwrap());
+    }
+
+    let mut file_chooser = HorizontalBox::new(&ui);
+
+    file_chooser.set_padded(&ui, true);
+
+    file_button.on_clicked(&ui, |_| {
+        if let Ok(Response::Okay(file)) = nfd::open_file_dialog(Some("exe"), None) {
+            file_entry.set_value(&ui, &file);
+
+            if steam.is_some() {
+                radio.set_selected(&ui, 1);
+            }
+
+            if Path::new(&file).is_file() {
+                next_button.enable(&ui);
+            } else {
+                next_button.disable(&ui);
+            }
+        }
+    });
+
+    radio.on_selected(&ui, |btn| {
+        if steam.is_some() && btn != 1 {
+            file_entry.set_value(&ui, steam.as_ref().unwrap().to_str().unwrap());
+            next_button.enable(&ui);
+        } else if steam.is_some() {
+            file_entry.set_value(&ui, "");
+        }
+
+        if Path::new(&file_entry.value(&ui)).is_file() {
+            next_button.enable(&ui);
+        } else {
+            next_button.disable(&ui);
+        }
+    });
+
+    file_entry.on_changed(&ui, |path| {
+        if steam.is_some() {
+            radio.set_selected(&ui, 1);
+        }
+
+        if Path::new(&path).is_file() {
+            next_button.enable(&ui);
+        } else {
+            next_button.disable(&ui);
+        }
+    });
+
+    file_chooser.append(&ui, file_entry.clone(), LayoutStrategy::Stretchy);
+    file_chooser.append(&ui, file_button.clone(), LayoutStrategy::Compact);
+
+    next_button.on_clicked(&ui, |_| {
+        win.set_child(&ui, install.clone());
+
+        let path = Path::new(&file_entry.value(&ui))
+            .parent()
+            .unwrap()
+            .to_path_buf();
+
+        ready_tx
+            .send(path)
+            .unwrap();
+    });
+
+    select.append(
+        &ui,
+        Label::new(&ui, "Select Celeste location:"),
+        LayoutStrategy::Compact,
+    );
+    select.append(&ui, radio.clone(), LayoutStrategy::Compact);
+    select.append(&ui, file_chooser, LayoutStrategy::Compact);
+    select.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+    select.append(&ui, next_button, LayoutStrategy::Compact);
+
+    select.set_padded(&ui, true);
+
+    // INSTALL PAGE (background thread)
+    thread::spawn(move || {
+        let url = std::env::args().nth(1).unwrap();
+        let url = (&url["everest:".len()..]).split(",").next().unwrap();
+
+        let mut path = ready_rx.recv().unwrap();
+        path.push("Mods/");
+
+        tx.send("downloading".to_string()).unwrap();
+
+        println!("{}", url);
+
+        let mut resp = reqwest::get(url).unwrap();
+
+        assert!(resp.status().is_success());
+
+        path.push(resp.url().path_segments().unwrap().last().unwrap());
+        let mut file = OpenOptions::new().write(true).create(true).open(&path).unwrap();
+        resp.copy_to(&mut file).unwrap();
+
+        tx.send("done".to_string()).unwrap();
+    });
+
+    install.set_padded(&ui, true);
+
+    // FINISH PAGE
+    let mut exit = Button::new(&ui, "Exit");
+    exit.on_clicked(&ui, {
+        let ui = ui.clone();
+        move |_| {
+            ui.quit();
+        }
+    });
+
+    let mut label_holder = HorizontalBox::new(&ui);
+    label_holder.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+    label_holder.append(
+        &ui,
+        Label::new(&ui, "Your mod has finished installing!"),
+        LayoutStrategy::Compact,
+    );
+    label_holder.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+
+    finish.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+    finish.append(&ui, label_holder, LayoutStrategy::Compact);
+    finish.append(&ui, Spacer::new(&ui), LayoutStrategy::Stretchy);
+    finish.append(&ui, exit, LayoutStrategy::Compact);
+
+    finish.set_padded(&ui, true);
+
+    // DISPLAY WINDOW
+    win.set_child(&ui, select);
+    win.show(&ui);
+
+    let mut eloop = ui.event_loop();
+    eloop.on_tick(&ui, || {
+        // INSTALL PAGE (event loop)
+        if let Ok(msg) = rx.try_recv() {
+            if msg == "downloading" {
+                install.append(
+                    &ui,
+                    Label::new(&ui, "Downloading..."),
+                    LayoutStrategy::Compact,
+                );
+            } else if msg == "done" {
+                win.set_child(&ui, finish.clone());
+            }
+        }
+    });
+    eloop.run_delay(&ui, 200);
+}
+
 fn main() {
     // immediately exit on panic
     // TODO: display graphical message before exiting (via event loop)
@@ -60,6 +255,13 @@ fn main() {
 
     // use system ssl certs
     openssl_probe::init_ssl_cert_env_vars();
+
+    register_uri_handler();
+
+    if let Some(_) = std::env::args().nth(1) {
+        handle_everest_uri();
+        return;
+    }
 
     let mut mono: Option<PathBuf> = None;
 
@@ -104,7 +306,7 @@ fn display(mono: Option<PathBuf>) {
     let steam = find_steam();
 
     let ui = UI::init().expect("Couldn't create UI!");
-    let mut win = Window::new(&ui, "Everest", 200, 300, WindowType::NoMenubar);
+    let mut win = Window::new(&ui, "EverInst", 200, 300, WindowType::NoMenubar);
 
     let mut version: Option<updater::EverestVersion> = None;
 

@@ -20,6 +20,7 @@ dirs = "1.0"
 zip = "0.5.1"
 openssl = { version = "0.10", features = ["vendored"] }
 openssl-probe = "0.1.2"
+system_uri = { version = "0.4.0", default-features = false }
 
 [package.metadata.deb]
 depends = "libgtk-3-0, libglib2.0-0, libcairo2, libpango-1.0-0, libc6, libgcc1, mono-runtime (>= 5.0)"
